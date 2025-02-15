@@ -98,6 +98,8 @@ flutter:
     - assets/fonts/Raleway-Regular.ttf
     - assets/fonts/Raleway-Bold.ttf
     - assets/fonts/Raleway-Italic.ttf
+    - assets/.env
+
   fonts:
     - family: Raleway
       fonts:
