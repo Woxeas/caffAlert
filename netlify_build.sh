@@ -10,5 +10,9 @@ flutter channel stable
 flutter upgrade
 flutter config --enable-web
 
+echo "=== Creating .env file from Netlify environment variables ==="
+echo "SUPABASE_URL=$SUPABASE_URL" > .env
+echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env
+
 echo "=== Building Flutter web (release) ==="
 flutter build web --release
