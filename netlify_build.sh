@@ -1,8 +1,14 @@
 #!/usr/bin/env bash
 set -e  # pokud se objeví chyba, skript skončí
 
-echo "=== Cloning Flutter SDK ==="
-git clone https://github.com/flutter/flutter.git
+if [ -d "flutter" ]; then
+  echo "Flutter SDK already exists, updating..."
+  cd flutter && git pull && cd ..
+else
+  echo "=== Cloning Flutter SDK ==="
+  git clone https://github.com/flutter/flutter.git
+fi
+
 export PATH="$PATH:$(pwd)/flutter/bin"
 
 echo "=== Switching to stable channel ==="
