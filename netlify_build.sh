@@ -16,25 +16,7 @@ flutter channel stable
 flutter upgrade
 flutter config --enable-web
 
-# 1) Vypíšeme environment variables, které Netlify poskytuje:
-echo "=== Print Netlify environment variables ==="
-echo "SUPABASE_URL is: $SUPABASE_URL"
-echo "SUPABASE_ANON_KEY is: $SUPABASE_ANON_KEY"
-
-# 2) Vytvoříme .env soubor v kořenovém adresáři (varianta A):
-echo "=== Creating .env file from Netlify environment variables ==="
-echo "SUPABASE_URL=$SUPABASE_URL" > .env
-echo "SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY" >> .env
-
-# 3) Zkontrolujeme, co bylo do .env zapsáno:
-echo "=== Content of .env file: ==="
-cat .env
-
-# 4) Spustíme Flutter build:
-echo "=== Building Flutter web (release) ==="
-flutter build web --release
-
-# 5) Na závěr vypíšeme obsah build/web, abychom ověřili, co tam je:
-echo "=== Listing build/web folder: ==="
-ls -R build/web
+# Spustíme Flutter build s předáním proměnných pomocí --dart-define:
+echo "=== Building Flutter web (release) with dart-define ==="
+flutter build web --release --dart-define=SUPABASE_URL=$SUPABASE_URL --dart-define=SUPABASE_ANON_KEY=$SUPABASE_ANON_KEY
 
