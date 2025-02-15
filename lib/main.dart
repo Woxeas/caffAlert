@@ -13,7 +13,7 @@ Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Načti .env soubor s proměnnými
- await dotenv.load(fileName: "assets/.env");
+ await dotenv.load(fileName: ".env");
 
   // Inicializace Supabase s použitím env proměnných
   await Supabase.initialize(
