@@ -4,6 +4,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'coffee_stats_provider.dart';
 
 class DashboardScreen extends StatelessWidget {
+  const DashboardScreen({super.key});
+
   // Funkce pro načtení uživatelského jména ze Supabase
   Future<String> _getUserName() async {
     final user = Supabase.instance.client.auth.currentUser;
@@ -23,7 +25,7 @@ class DashboardScreen extends StatelessWidget {
 
   // Funkce pro zobrazení dialogu a úpravu dnešních údajů
   void _showEditDialog(BuildContext context, CoffeeStatsProvider coffeeStats) {
-    final TextEditingController _controller = TextEditingController(
+    final TextEditingController controller = TextEditingController(
       text: coffeeStats.dailyCoffees.toString(),
     );
 
@@ -33,7 +35,7 @@ class DashboardScreen extends StatelessWidget {
         return AlertDialog(
           title: Text('Update Today’s Coffee Count'),
           content: TextField(
-            controller: _controller,
+            controller: controller,
             keyboardType: TextInputType.number,
             decoration: InputDecoration(
               labelText: 'Enter new count',
@@ -49,7 +51,7 @@ class DashboardScreen extends StatelessWidget {
             ),
             ElevatedButton(
               onPressed: () {
-                final int? newCount = int.tryParse(_controller.text);
+                final int? newCount = int.tryParse(controller.text);
                 if (newCount != null) {
                   coffeeStats.setDailyCount(newCount); // Nastavení nového počtu káv
                 }

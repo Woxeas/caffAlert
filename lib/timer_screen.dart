@@ -4,6 +4,8 @@ import 'timer_provider.dart';
 import 'coffee_stats_provider.dart';
 
 class TimerScreen extends StatelessWidget {
+  const TimerScreen({super.key});
+
   String _formatTime(int seconds) {
     final hours = (seconds ~/ 3600).toString().padLeft(2, '0');
     final minutes = ((seconds % 3600) ~/ 60).toString().padLeft(2, '0');

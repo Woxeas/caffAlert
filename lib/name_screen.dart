@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'timer_screen.dart'; // Importujte hlavní obrazovku (TimerScreen nebo MainScreen)
 
 class NameScreen extends StatefulWidget {
+  const NameScreen({super.key});
+
   @override
   _NameScreenState createState() => _NameScreenState();
 }
@@ -33,7 +35,7 @@ class _NameScreenState extends State<NameScreen> {
             })
             .select();
 
-        if (response != null && response.isNotEmpty) {
+        if (response.isNotEmpty) {
           // Úspěšné uložení - přesměrování na hlavní obrazovku (TimerScreen)
           if (mounted) {
             Navigator.of(context).pushReplacement(

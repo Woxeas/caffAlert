@@ -3,6 +3,8 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_screen.dart';
 
 class SettingsScreen extends StatelessWidget {
+  const SettingsScreen({super.key});
+
   Future<void> _logout(BuildContext context) async {
     // Supabase odhlášení
     await Supabase.instance.client.auth.signOut();
