@@ -1,0 +1,3 @@
+[build]
+command = "sh netlify_build.sh"
+publish = "build/web"
