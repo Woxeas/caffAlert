@@ -98,7 +98,6 @@ class TimerProvider extends ChangeNotifier {
         });
   }
 
-  /// Vloží nový coffee log → vyvolá realtime event → reset timeru na všech zařízeních.
   Future<void> resetTimer() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -113,11 +112,19 @@ class TimerProvider extends ChangeNotifier {
           })
           .select();
       print("Nový coffee log vložen: $now");
-      // Realtime callback se postará o aktualizaci _lastLogTime.
+      
+      // 1) Okamžitě lokálně nastavíme _lastLogTime, abychom měli ihned 60 s
+      _lastLogTime = now;
+      notifyListeners();
+
+      // 2) Realtime subscription se postará o OSTATNÍ zařízení
+      //    Tady nepotřebujeme nic, callback se spustí i na stejném zařízení,
+      //    ale klidně až po chvilce – my jsme to vyřešili už teď lokálně.
     } catch (e) {
       print("Chyba při insertu coffee logu: $e");
     }
   }
+
 
   @override
   void dispose() {
