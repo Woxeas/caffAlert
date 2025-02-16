@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TimerProvider extends ChangeNotifier {
-  static const int durationSeconds = 60; // doba odpočtu v sekundách
+  static const int durationSeconds = 60; // celková doba odpočtu v sekundách
   int remainingTime = durationSeconds;
   Timer? _timer;
   RealtimeChannel? _channel;
@@ -17,6 +17,7 @@ class TimerProvider extends ChangeNotifier {
   Future<void> _initializeTimer() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
+
     final response = await Supabase.instance.client
         .from('coffee_logs')
         .select('created_at')
@@ -26,12 +27,14 @@ class TimerProvider extends ChangeNotifier {
         .maybeSingle();
 
     DateTime lastLogTime;
-    if (response != null && response['created_at'] != null) {
+    if (response != null &&
+        response is Map<String, dynamic> &&
+        response['created_at'] != null) {
       lastLogTime = DateTime.parse(response['created_at'] as String);
     } else {
+      // Pokud není žádný záznam, nastavíme timer na plnou dobu.
       lastLogTime = DateTime.now().subtract(const Duration(seconds: durationSeconds));
     }
-
     _startCountdownFrom(lastLogTime);
   }
 
@@ -53,31 +56,36 @@ class TimerProvider extends ChangeNotifier {
     });
   }
 
-  /// Nastaví realtime subscription na tabulku coffee_logs pro aktuálního uživatele.
+  /// Nastaví realtime subscription na INSERT události v tabulce coffee_logs pro aktuálního uživatele.
   void _subscribeToCoffeeLogs() {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
+    // Vytvoříme realtime kanál s unikátním názvem pro daného uživatele.
     _channel = Supabase.instance.client
-        .channel('public:coffee_logs')
+        .channel('public:coffee_logs_${user.id}')
         .onPostgresChanges(
           event: PostgresChangeEvent.insert,
           schema: 'public',
           table: 'coffee_logs',
           filter: PostgresChangeFilter(
-            type: PostgresChangeFilterType.eq, // Použijeme eq místo equals
+            type: PostgresChangeFilterType.eq,
             column: 'user_id',
             value: user.id,
           ),
           callback: (payload, [ref]) {
-            // Reset timer, protože nový záznam byl vložen.
+            print("Realtime event received: $payload");
+            // Reset timer na základě aktuálního času, protože byl vložen nový log.
             _startCountdownFrom(DateTime.now());
           },
         )
-        .subscribe();
+    .subscribe((RealtimeSubscribeStatus status, [Object? extra]) {
+      print("Realtime subscription status: $status, extra: $extra");
+    });
+
   }
 
-  /// Reset timer manuálně (např. při tlačítku "I just had a coffee")
+  /// Reset timer manuálně (např. při stisknutí tlačítka "I Just Had a Coffee")
   void resetTimer() {
     _startCountdownFrom(DateTime.now());
   }
