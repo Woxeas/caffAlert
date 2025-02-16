@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TimerProvider extends ChangeNotifier {
-  static const int durationSeconds = 60; // celková doba odpočtu v sekundách
+  static const int durationSeconds = 60; // Celková doba odpočtu v sekundách
   int remainingTime = durationSeconds;
   Timer? _timer;
   RealtimeChannel? _channel;
@@ -32,7 +32,7 @@ class TimerProvider extends ChangeNotifier {
         response['created_at'] != null) {
       lastLogTime = DateTime.parse(response['created_at'] as String);
     } else {
-      // Pokud není žádný záznam, nastavíme timer na plnou dobu.
+      // Pokud není žádný záznam, nastavíme timer na 0 (protože odpočet by měl být nulový)
       lastLogTime = DateTime.now().subtract(const Duration(seconds: durationSeconds));
     }
     _startCountdownFrom(lastLogTime);
@@ -61,7 +61,6 @@ class TimerProvider extends ChangeNotifier {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
-    // Vytvoříme realtime kanál s unikátním názvem pro daného uživatele.
     _channel = Supabase.instance.client
         .channel('public:coffee_logs_${user.id}')
         .onPostgresChanges(
@@ -73,16 +72,30 @@ class TimerProvider extends ChangeNotifier {
             column: 'user_id',
             value: user.id,
           ),
-          callback: (payload, [ref]) {
+          callback: (payload, [ref]) async {
             print("Realtime event received: $payload");
-            // Reset timer na základě aktuálního času, protože byl vložen nový log.
-            _startCountdownFrom(DateTime.now());
+            // Po novém INSERTu dotáhneš z DB poslední log a resetuješ timer.
+            final response = await Supabase.instance.client
+                .from('coffee_logs')
+                .select('created_at')
+                .eq('user_id', user.id)
+                .order('created_at', ascending: false)
+                .limit(1)
+                .maybeSingle();
+            DateTime lastLogTime;
+            if (response != null &&
+                response is Map<String, dynamic> &&
+                response['created_at'] != null) {
+              lastLogTime = DateTime.parse(response['created_at'] as String);
+            } else {
+              lastLogTime = DateTime.now();
+            }
+            _startCountdownFrom(lastLogTime);
           },
         )
-    .subscribe((RealtimeSubscribeStatus status, [Object? extra]) {
-      print("Realtime subscription status: $status, extra: $extra");
-    });
-
+        .subscribe((RealtimeSubscribeStatus status, [Object? extra]) {
+          print("Realtime subscription status: $status, extra: $extra");
+        });
   }
 
   /// Reset timer manuálně (např. při stisknutí tlačítka "I Just Had a Coffee")
