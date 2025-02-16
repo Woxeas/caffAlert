@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'app_logger.dart';
 
 class CoffeeStatsProvider extends ChangeNotifier {
   // Lokální seznam pro dočasné uložení (pouze v RAM)
@@ -16,6 +17,7 @@ class CoffeeStatsProvider extends ChangeNotifier {
     if (user == null) {
       coffeeLog = [];
       notifyListeners();
+      AppLogger.logger.w("No authenticated user found. Not loading coffee logs.");
       return;
     }
 
@@ -32,9 +34,10 @@ class CoffeeStatsProvider extends ChangeNotifier {
         // Předpokládáme, že row['created_at'] je String
         return DateTime.parse(row['created_at'] as String);
       }).toList();
+      AppLogger.logger.i("Loaded ${coffeeLog.length} coffee log(s) from Supabase.");
       notifyListeners();
-        } catch (e) {
-      print('Chyba při načítání coffee_logs: $e');
+    } catch (e, stackTrace) {
+      AppLogger.logger.e("Error loading coffee_logs", e, stackTrace);
     }
   }
 
@@ -42,6 +45,7 @@ class CoffeeStatsProvider extends ChangeNotifier {
   Future<void> addCoffee() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
+      AppLogger.logger.w("Cannot add coffee log: no authenticated user.");
       return;
     }
 
@@ -55,13 +59,12 @@ class CoffeeStatsProvider extends ChangeNotifier {
             'created_at': now.toIso8601String(),
           })
           .select();
-          
-      // Pokud insert proběhne úspěšně, aktualizujeme lokální seznam
+      AppLogger.logger.i("New coffee log added at $now for user ${user.id}");
+      // Aktualizujeme lokální seznam
       coffeeLog.insert(0, now);
       notifyListeners();
-    } catch (e) {
-      print('Chyba při insertu coffee_logs: $e');
-      return;
+    } catch (e, stackTrace) {
+      AppLogger.logger.e("Error inserting coffee_logs", e, stackTrace);
     }
   }
 
@@ -88,6 +91,7 @@ class CoffeeStatsProvider extends ChangeNotifier {
   Future<void> setDailyCount(int count) async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
+      AppLogger.logger.w("Cannot set daily count: no authenticated user.");
       return;
     }
 
@@ -104,8 +108,9 @@ class CoffeeStatsProvider extends ChangeNotifier {
           .gte('created_at', startOfDay.toIso8601String())
           .lte('created_at', endOfDay.toIso8601String())
           .select();
-    } catch (e) {
-      print('Chyba při mazání dnešních záznamů: $e');
+      AppLogger.logger.i("Deleted coffee logs for today for user ${user.id}");
+    } catch (e, stackTrace) {
+      AppLogger.logger.e("Error deleting today's coffee logs", e, stackTrace);
       return;
     }
 
@@ -122,8 +127,9 @@ class CoffeeStatsProvider extends ChangeNotifier {
           .from('coffee_logs')
           .insert(inserts)
           .select();
-    } catch (e) {
-      print('Chyba při vkládání nových záznamů: $e');
+      AppLogger.logger.i("Inserted $count new coffee log(s) for user ${user.id}");
+    } catch (e, stackTrace) {
+      AppLogger.logger.e("Error inserting new coffee logs", e, stackTrace);
       return;
     }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:sentry_flutter/sentry_flutter.dart';
 import 'timer_provider.dart';
 import 'coffee_stats_provider.dart';
 import 'timer_screen.dart';
@@ -12,24 +13,33 @@ import 'name_screen.dart';
 // Tyto konstanty budou načteny z proměnných předaných pomocí --dart-define
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
+const sentryDsn = String.fromEnvironment('SENTRY_DSN');
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Inicializace Supabase s využitím build-time konstant
-  await Supabase.initialize(
-    url: supabaseUrl,
-    anonKey: supabaseAnonKey,
-  );
+  await SentryFlutter.init(
+    (options) {
+      options.dsn = sentryDsn;
+      options.environment = 'production';
+    },
+    appRunner: () async {
+      // Inicializace Supabase s využitím build-time konstant
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+      );
 
-  runApp(
-    MultiProvider(
-      providers: [
-        ChangeNotifierProvider(create: (_) => TimerProvider()),
-        ChangeNotifierProvider(create: (_) => CoffeeStatsProvider()),
-      ],
-      child: const CaffAlertApp(),
-    ),
+      runApp(
+        MultiProvider(
+          providers: [
+            ChangeNotifierProvider(create: (_) => TimerProvider()),
+            ChangeNotifierProvider(create: (_) => CoffeeStatsProvider()),
+          ],
+          child: const CaffAlertApp(),
+        ),
+      );
+    },
   );
 }
 
@@ -67,10 +77,10 @@ class _CaffAlertAppState extends State<CaffAlertApp> {
       // Pokud je přihlášen, HomeSelector rozhodne, zda zobrazit NameScreen (pokud jméno není nastaveno)
       // nebo MainScreen (pokud jméno existuje).
       home: Supabase.instance.client.auth.currentSession == null
-          ? AuthScreen()
+          ? const AuthScreen()
           : const HomeSelector(),
       routes: {
-        '/settings': (context) => SettingsScreen(),
+        '/settings': (context) => const SettingsScreen(),
       },
     );
   }
@@ -112,7 +122,7 @@ class HomeSelector extends StatelessWidget {
               body: Center(child: Text('Error loading profile')));
         } else {
           final hasName = snapshot.data ?? false;
-          return hasName ? MainScreen() : NameScreen();
+          return hasName ? MainScreen() : const NameScreen();
         }
       },
     );
@@ -129,7 +139,7 @@ class MainScreen extends StatelessWidget {
     return Scaffold(
       body: PageView(
         controller: _pageController,
-        children: [
+        children: const [
           TimerScreen(),    // Hlavní obrazovka s časovačem
           DashboardScreen(), // Dashboard obrazovka
           SettingsScreen(),  // Nastavení
