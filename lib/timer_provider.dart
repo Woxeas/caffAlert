@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 class TimerProvider extends ChangeNotifier {
-  static const int durationSeconds = 60; // Celková doba odpočtu v sekundách
+  static const int durationSeconds = 60; // doba odpočtu v sekundách
   int remainingTime = durationSeconds;
   Timer? _timer;
   RealtimeChannel? _channel;
@@ -13,7 +13,7 @@ class TimerProvider extends ChangeNotifier {
     _subscribeToCoffeeLogs();
   }
 
-  /// Načte poslední záznam z DB a nastaví odpočet
+  /// Načte poslední záznam z DB a nastaví odpočet.
   Future<void> _initializeTimer() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -30,17 +30,19 @@ class TimerProvider extends ChangeNotifier {
     if (response != null &&
         response is Map<String, dynamic> &&
         response['created_at'] != null) {
-      lastLogTime = DateTime.parse(response['created_at'] as String);
+      // Převedeme hodnotu na UTC
+      lastLogTime = DateTime.parse(response['created_at'] as String).toUtc();
     } else {
-      // Pokud není žádný záznam, nastavíme timer na 0 (protože odpočet by měl být nulový)
-      lastLogTime = DateTime.now().subtract(const Duration(seconds: durationSeconds));
+      // Pokud není záznam, nastavíme čas tak, aby elapsed byl >= durationSeconds
+      lastLogTime = DateTime.now().toUtc().subtract(const Duration(seconds: durationSeconds));
     }
     _startCountdownFrom(lastLogTime);
   }
 
-  /// Spustí odpočet od určitého času
+  /// Spustí odpočet od zadaného času.
   void _startCountdownFrom(DateTime lastLogTime) {
-    final elapsed = DateTime.now().difference(lastLogTime).inSeconds;
+    final nowUtc = DateTime.now().toUtc();
+    final elapsed = nowUtc.difference(lastLogTime).inSeconds;
     remainingTime = durationSeconds - elapsed;
     if (remainingTime < 0) remainingTime = 0;
     notifyListeners();
@@ -56,7 +58,7 @@ class TimerProvider extends ChangeNotifier {
     });
   }
 
-  /// Nastaví realtime subscription na INSERT události v tabulce coffee_logs pro aktuálního uživatele.
+  /// Realtime subscription, která sleduje INSERT události v tabulce coffee_logs.
   void _subscribeToCoffeeLogs() {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -74,7 +76,7 @@ class TimerProvider extends ChangeNotifier {
           ),
           callback: (payload, [ref]) async {
             print("Realtime event received: $payload");
-            // Po novém INSERTu dotáhneš z DB poslední log a resetuješ timer.
+            // Po obdržení INSERTu znovu načteme poslední log z DB:
             final response = await Supabase.instance.client
                 .from('coffee_logs')
                 .select('created_at')
@@ -82,13 +84,14 @@ class TimerProvider extends ChangeNotifier {
                 .order('created_at', ascending: false)
                 .limit(1)
                 .maybeSingle();
+
             DateTime lastLogTime;
             if (response != null &&
                 response is Map<String, dynamic> &&
                 response['created_at'] != null) {
-              lastLogTime = DateTime.parse(response['created_at'] as String);
+              lastLogTime = DateTime.parse(response['created_at'] as String).toUtc();
             } else {
-              lastLogTime = DateTime.now();
+              lastLogTime = DateTime.now().toUtc();
             }
             _startCountdownFrom(lastLogTime);
           },
@@ -98,9 +101,9 @@ class TimerProvider extends ChangeNotifier {
         });
   }
 
-  /// Reset timer manuálně (např. při stisknutí tlačítka "I Just Had a Coffee")
+  /// Reset timer manuálně (např. při stisknutí tlačítka "I Just Had a Coffee").
   void resetTimer() {
-    _startCountdownFrom(DateTime.now());
+    _startCountdownFrom(DateTime.now().toUtc());
   }
 
   @override
