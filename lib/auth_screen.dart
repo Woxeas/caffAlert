@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'name_screen.dart';
-import 'main.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
@@ -24,11 +23,12 @@ class _AuthScreenState extends State<AuthScreen> {
           password: _passwordController.text,
         );
         if (response.session != null) {
-          // Po přihlášení se vždy přesměrujeme na obrazovku NameScreen pro zadání jména
+          if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => NameScreen()),
           );
         } else {
+          if (!mounted) return;
           setState(() {
             _errorMessage = "Sign-in failed. Please check your credentials.";
           });
@@ -39,17 +39,19 @@ class _AuthScreenState extends State<AuthScreen> {
           password: _passwordController.text,
         );
         if (response.user != null) {
+          if (!mounted) return;
           setState(() {
             _isLogin = true;
           });
           await _createProfileIfNotExists(response.user!.id);
-          // Po registraci přesměrujeme uživatele na obrazovku NameScreen
+          if (!mounted) return;
           Navigator.of(context).pushReplacement(
             MaterialPageRoute(builder: (_) => NameScreen()),
           );
         }
       }
     } on AuthException catch (error) {
+      if (!mounted) return;
       setState(() {
         _errorMessage = error.message;
       });
@@ -85,21 +87,21 @@ class _AuthScreenState extends State<AuthScreen> {
           children: [
             TextField(
               controller: _emailController,
-              decoration: InputDecoration(labelText: 'Email'),
+              decoration: const InputDecoration(labelText: 'Email'),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             TextField(
               controller: _passwordController,
-              decoration: InputDecoration(labelText: 'Password'),
+              decoration: const InputDecoration(labelText: 'Password'),
               obscureText: true,
             ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             if (_errorMessage != null)
               Text(
                 _errorMessage!,
-                style: TextStyle(color: Colors.red),
+                style: const TextStyle(color: Colors.red),
               ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _authenticate,
               child: Text(_isLogin ? 'Login' : 'Sign Up'),

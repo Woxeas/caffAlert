@@ -113,9 +113,9 @@ class DashboardScreen extends StatelessWidget {
               child: ListView.builder(
                 itemCount: coffeeStats.coffeeLog.length,
                 itemBuilder: (context, index) {
-                  String dateTime = coffeeStats.coffeeLog[index];
+                  DateTime dateTime = coffeeStats.coffeeLog[index];
                   return ListTile(
-                    title: Text('Coffee at ${DateTime.parse(dateTime)}'),
+                    title: Text('Coffee at $dateTime'),
                   );
                 },
               ),
