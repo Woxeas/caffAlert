@@ -12,7 +12,7 @@ class AppLogger {
       colors: !kReleaseMode,
     ),
     output: kIsWeb 
-        ? _SentryOnlyLogOutput()
+        ? SentryOnlyLogOutput()
         : CompositeLogOutput(FileLogOutput()),
   );
 }

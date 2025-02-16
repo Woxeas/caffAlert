@@ -10,7 +10,7 @@ import 'auth_screen.dart';
 import 'settings_screen.dart';
 import 'name_screen.dart';
 
-// Tyto konstanty budou načteny z proměnných předaných pomocí --dart-define
+// Build-time konstanty předávané přes dart-define
 const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
 const supabaseAnonKey = String.fromEnvironment('SUPABASE_ANON_KEY');
 const sentryDsn = String.fromEnvironment('SENTRY_DSN');
@@ -18,13 +18,16 @@ const sentryDsn = String.fromEnvironment('SENTRY_DSN');
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // Inicializace Sentry s rozšířenou konfigurací.
   await SentryFlutter.init(
     (options) {
       options.dsn = sentryDsn;
       options.environment = 'production';
+      options.release = 'caffalert@1.0.0+1';
+      options.tracesSampleRate = 1.0;
     },
     appRunner: () async {
-      // Inicializace Supabase s využitím build-time konstant
+      // Inicializace Supabase s využitím build-time konstant.
       await Supabase.initialize(
         url: supabaseUrl,
         anonKey: supabaseAnonKey,
@@ -58,7 +61,7 @@ class _CaffAlertAppState extends State<CaffAlertApp> {
   }
 
   void _listenToAuthChanges() {
-    // Poslouchá změny v autentizaci a znovu vyvolá build
+    // Poslouchá změny v autentizaci a vyvolá rebuild
     Supabase.instance.client.auth.onAuthStateChange.listen((event) {
       setState(() {});
     });
@@ -94,7 +97,6 @@ class HomeSelector extends StatelessWidget {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return false;
 
-    // maybeSingle() vrací Map nebo null, pokud záznam neexistuje.
     final response = await Supabase.instance.client
         .from('profiles')
         .select('name')
@@ -103,7 +105,6 @@ class HomeSelector extends StatelessWidget {
 
     if (response == null) return false;
 
-    // response je již mapa (PostgrestMap), kterou můžeme použít přímo
     final profile = response as Map<String, dynamic>;
     final name = profile['name'];
     return name != null && name.toString().trim().isNotEmpty;
