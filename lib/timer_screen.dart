@@ -29,7 +29,7 @@ class TimerScreen extends StatelessWidget {
             child: AnimatedContainer(
               duration: Duration(seconds: 1),
               curve: Curves.easeInOut,
-              height: MediaQuery.of(context).size.height * (timerProvider.remainingTime / TimerProvider.initialTime),
+              height: MediaQuery.of(context).size.height * (timerProvider.remainingTime / TimerProvider.durationSeconds),
               color: Color.fromARGB(255, 191, 150, 120),
             ),
           ),
