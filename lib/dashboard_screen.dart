@@ -1,10 +1,30 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'coffee_stats_provider.dart';
 
 class DashboardScreen extends StatelessWidget {
   const DashboardScreen({super.key});
+
+  /// Načte jméno uživatele z databáze Supabase.
+  Future<String?> _fetchUserName() async {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) return null;
+
+    try {
+      final response = await Supabase.instance.client
+          .from('profiles')
+          .select('name')
+          .eq('id', user.id)
+          .maybeSingle();
+
+      if (response == null || response['name'] == null) return null;
+      return response['name'] as String?;
+    } catch (e) {
+      return null; // Vrátí null v případě chyby
+    }
+  }
 
   /// Formátuje [DateTime] do "HH:mm:ss".
   String _formatTime(DateTime dt) {
@@ -114,6 +134,26 @@ class DashboardScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Welcome message with user's name
+            FutureBuilder<String?>(
+              future: _fetchUserName(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Text(
+                    "Loading...",
+                    style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                  );
+                }
+                final userName = snapshot.data;
+                return Text(
+                  userName != null && userName.isNotEmpty
+                      ? "Welcome back, $userName! ☕"
+                      : "Welcome to CaffAlert! ☕",
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
             // Karta s informací o poslední kávě
             Card(
               elevation: 4,
