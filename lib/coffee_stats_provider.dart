@@ -3,15 +3,14 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'app_logger.dart';
 
 class CoffeeStatsProvider extends ChangeNotifier {
-  // Lokální seznam pro dočasné uložení (pouze v RAM)
-  // Bude se plnit daty z tabulky coffee_logs.
   List<DateTime> coffeeLog = [];
+  RealtimeChannel? _channel;
 
   CoffeeStatsProvider() {
     _loadStatsFromSupabase();
+    _subscribeToCoffeeLogs();
   }
 
-  /// Načte data z Supabase pro aktuálního uživatele.
   Future<void> _loadStatsFromSupabase() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
@@ -22,16 +21,14 @@ class CoffeeStatsProvider extends ChangeNotifier {
     }
 
     try {
-      // Výsledek dotazu je přímo List (PostgrestList)
       final response = await Supabase.instance.client
           .from('coffee_logs')
           .select('created_at')
           .eq('user_id', user.id)
           .order('created_at', ascending: false);
-          
+
       final data = response as List<dynamic>;
       coffeeLog = data.map((row) {
-        // Předpokládáme, že row['created_at'] je String
         return DateTime.parse(row['created_at'] as String);
       }).toList();
       AppLogger.logger.i("Loaded ${coffeeLog.length} coffee log(s) from Supabase.");
@@ -41,7 +38,53 @@ class CoffeeStatsProvider extends ChangeNotifier {
     }
   }
 
-  /// Přidá záznam kávy do Supabase.
+  void _subscribeToCoffeeLogs() {
+    final user = Supabase.instance.client.auth.currentUser;
+    if (user == null) {
+      AppLogger.logger.w("Cannot subscribe to realtime coffee_logs: no authenticated user.");
+      return;
+    }
+
+    try {
+      _channel = Supabase.instance.client
+          .channel('public:coffee_logs_${user.id}')
+          .onPostgresChanges(
+            event: PostgresChangeEvent.insert,
+            schema: 'public',
+            table: 'coffee_logs',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'user_id',
+              value: user.id,
+            ),
+            callback: (payload, [ref]) async {
+              AppLogger.logger.i("Realtime INSERT event: $payload");
+              await _loadStatsFromSupabase();
+            },
+          )
+          .onPostgresChanges(
+            event: PostgresChangeEvent.delete,
+            schema: 'public',
+            table: 'coffee_logs',
+            filter: PostgresChangeFilter(
+              type: PostgresChangeFilterType.eq,
+              column: 'user_id',
+              value: user.id,
+            ),
+            callback: (payload, [ref]) async {
+              AppLogger.logger.i("Realtime DELETE event: $payload");
+              await _loadStatsFromSupabase();
+            },
+          )
+          .subscribe((status, [extra]) {
+            AppLogger.logger.i("Realtime subscription status: $status, extra: $extra");
+          });
+    } catch (e, stackTrace) {
+      AppLogger.logger.e("Error subscribing to realtime coffee_logs", e, stackTrace);
+    }
+  }
+
+  /// Přidá nový coffee log do Supabase a aktualizuje lokální seznam.
   Future<void> addCoffee() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
@@ -51,7 +94,6 @@ class CoffeeStatsProvider extends ChangeNotifier {
 
     final now = DateTime.now();
     try {
-      // Vložíme nový záznam do DB (user_id, created_at)
       await Supabase.instance.client
           .from('coffee_logs')
           .insert({
@@ -60,7 +102,6 @@ class CoffeeStatsProvider extends ChangeNotifier {
           })
           .select();
       AppLogger.logger.i("New coffee log added at $now for user ${user.id}");
-      // Aktualizujeme lokální seznam
       coffeeLog.insert(0, now);
       notifyListeners();
     } catch (e, stackTrace) {
@@ -68,78 +109,69 @@ class CoffeeStatsProvider extends ChangeNotifier {
     }
   }
 
-  /// Počet káv za dnešní den
-  int get dailyCoffees {
-    final now = DateTime.now();
-    return coffeeLog.where((date) {
-      return date.year == now.year && date.month == now.month && date.day == now.day;
-    }).length;
-  }
-
-  /// Počet káv za aktuální měsíc
-  int get monthlyCoffees {
-    final now = DateTime.now();
-    return coffeeLog.where((date) {
-      return date.year == now.year && date.month == now.month;
-    }).length;
-  }
-
-  /// Celkový počet káv (všechny záznamy v coffeeLog)
-  int get totalCoffees => coffeeLog.length;
-
-  /// Nastaví počet káv pro dnešní den
-  Future<void> setDailyCount(int count) async {
+  /// Odstraní poslední vložený coffee log z databáze a aktualizuje lokální seznam.
+  Future<void> removeLastCoffee() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) {
-      AppLogger.logger.w("Cannot set daily count: no authenticated user.");
+      AppLogger.logger.w("Cannot remove coffee log: no authenticated user.");
       return;
     }
 
-    final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = DateTime(now.year, now.month, now.day, 23, 59, 59);
-
     try {
-      // Smaž všechny záznamy pro dnešní den v DB
+      // Načteme poslední log (nejnovější) pomocí řazení a limitu 1.
+      final response = await Supabase.instance.client
+          .from('coffee_logs')
+          .select('id')
+          .eq('user_id', user.id)
+          .order('created_at', ascending: false)
+          .limit(1)
+          .maybeSingle();
+
+      if (response == null) {
+        AppLogger.logger.w("No coffee log found to remove.");
+        return;
+      }
+
+      final logId = (response as Map<String, dynamic>)['id'];
       await Supabase.instance.client
           .from('coffee_logs')
           .delete()
-          .eq('user_id', user.id)
-          .gte('created_at', startOfDay.toIso8601String())
-          .lte('created_at', endOfDay.toIso8601String())
+          .eq('id', logId)
           .select();
-      AppLogger.logger.i("Deleted coffee logs for today for user ${user.id}");
-    } catch (e, stackTrace) {
-      AppLogger.logger.e("Error deleting today's coffee logs", e, stackTrace);
-      return;
-    }
+      AppLogger.logger.i("Removed coffee log with id: $logId");
 
-    // Vytvoříme pole nových záznamů
-    final List<Map<String, dynamic>> inserts = [];
-    for (int i = 0; i < count; i++) {
-      inserts.add({
-        'user_id': user.id,
-        'created_at': DateTime.now().toIso8601String(),
-      });
-    }
-    try {
-      await Supabase.instance.client
-          .from('coffee_logs')
-          .insert(inserts)
-          .select();
-      AppLogger.logger.i("Inserted $count new coffee log(s) for user ${user.id}");
+      if (coffeeLog.isNotEmpty) {
+        coffeeLog.removeAt(0);
+      }
+      notifyListeners();
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Error inserting new coffee logs", e, stackTrace);
-      return;
+      AppLogger.logger.e("Error removing last coffee log", e, stackTrace);
     }
+  }
 
-    // Aktualizace lokálního seznamu
-    coffeeLog.removeWhere((date) {
-      return date.year == now.year && date.month == now.month && date.day == now.day;
-    });
-    for (int i = 0; i < count; i++) {
-      coffeeLog.insert(0, DateTime.now());
-    }
-    notifyListeners();
+  /// Vrací počet káv za dnešní den.
+  int get dailyCoffees {
+    final now = DateTime.now();
+    return coffeeLog.where((date) =>
+        date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day).length;
+  }
+
+  /// Vrací počet káv za aktuální měsíc.
+  int get monthlyCoffees {
+    final now = DateTime.now();
+    return coffeeLog.where((date) =>
+        date.year == now.year &&
+        date.month == now.month).length;
+  }
+
+  /// Vrací celkový počet káv.
+  int get totalCoffees => coffeeLog.length;
+
+  @override
+  void dispose() {
+    _channel?.unsubscribe();
+    super.dispose();
   }
 }

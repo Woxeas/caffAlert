@@ -2,14 +2,13 @@ import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'app_logger.dart'; // import našeho centralizovaného loggeru
+import 'app_logger.dart';
 
 class TimerProvider extends ChangeNotifier {
-  static const int durationSeconds = 60; // Celková doba odpočtu (1 minuta)
+  static const int durationSeconds = 14400;
 
-  DateTime? _lastLogTime; // Čas posledního logu (v UTC)
+  DateTime? _lastLogTime;
 
-  // Dynamicky počítaný zbývající čas (nikdy více než 60, nikdy méně než 0)
   int get remainingTime {
     if (_lastLogTime == null) return durationSeconds;
     final elapsed = DateTime.now().toUtc().difference(_lastLogTime!).inSeconds;
@@ -21,102 +20,81 @@ class TimerProvider extends ChangeNotifier {
 
   TimerProvider() {
     _initializeTimer();
-    _subscribeToCoffeeLogs();
+    _subscribeToUsersInfoChanges();
     _startNotifier();
   }
 
-  /// Periodicky (každou sekundu) zavolá notifyListeners(), aby se UI aktualizovalo.
   void _startNotifier() {
     _notifierTimer?.cancel();
     _notifierTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
-      notifyListeners(); // Každou sekundu se přepočítá remainingTime
+      notifyListeners();
     });
   }
 
-  /// Načte poslední coffee log z DB a uloží jeho čas do _lastLogTime.
   Future<void> _initializeTimer() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
     try {
       final response = await Supabase.instance.client
-          .from('coffee_logs')
-          .select('created_at')
+          .from('users_info')
+          .select('last_coffee')
           .eq('user_id', user.id)
-          .order('created_at', ascending: false)
-          .limit(1)
           .maybeSingle();
 
-      if (response is Map<String, dynamic> && response['created_at'] != null) {
-        _lastLogTime =
-            DateTime.parse(response['created_at'] as String).toUtc();
-        AppLogger.logger.i("Poslední log načten: $_lastLogTime");
+      if (response is Map<String, dynamic> && response['last_coffee'] != null) {
+        _lastLogTime = DateTime.parse(response['last_coffee'] as String).toUtc();
       } else {
-        // Pokud není žádný záznam, nastavíme _lastLogTime tak, aby rozdíl byl >= 60s (timer = 0)
         _lastLogTime = DateTime.now().toUtc().subtract(
             const Duration(seconds: durationSeconds));
-        AppLogger.logger.i("Žádný log, nastavujeme _lastLogTime: $_lastLogTime");
       }
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Chyba při načítání coffee_logs", e, stackTrace);
+      AppLogger.logger.e("Chyba při načítání users_info", e, stackTrace);
     }
     notifyListeners();
   }
 
-  /// Realtime subscription: sleduje INSERT události v tabulce coffee_logs pro aktuálního uživatele.
-  void _subscribeToCoffeeLogs() {
+  void _subscribeToUsersInfoChanges() {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
 
     try {
       _channel = Supabase.instance.client
-          .channel('public:coffee_logs_${user.id}')
+          .channel('public:users_info_${user.id}')
           .onPostgresChanges(
-            event: PostgresChangeEvent.insert,
+            event: PostgresChangeEvent.update,
             schema: 'public',
-            table: 'coffee_logs',
+            table: 'users_info',
             filter: PostgresChangeFilter(
               type: PostgresChangeFilterType.eq,
               column: 'user_id',
               value: user.id,
             ),
             callback: (payload, [ref]) async {
-              AppLogger.logger.i("Realtime event: $payload");
-              // Po INSERTu znovu načti poslední log:
               try {
                 final resp = await Supabase.instance.client
-                    .from('coffee_logs')
-                    .select('created_at')
+                    .from('users_info')
+                    .select('last_coffee')
                     .eq('user_id', user.id)
-                    .order('created_at', ascending: false)
-                    .limit(1)
                     .maybeSingle();
 
-                if (resp is Map<String, dynamic> && resp['created_at'] != null) {
-                  _lastLogTime =
-                      DateTime.parse(resp['created_at'] as String).toUtc();
-                  AppLogger.logger.i("Realtime: nové _lastLogTime: $_lastLogTime");
+                if (resp is Map<String, dynamic> && resp['last_coffee'] != null) {
+                  _lastLogTime = DateTime.parse(resp['last_coffee'] as String).toUtc();
                 } else {
                   _lastLogTime = DateTime.now().toUtc();
-                  AppLogger.logger.w(
-                      "Realtime: žádný log nalezen, _lastLogTime nastaveno na nyní: $_lastLogTime");
                 }
               } catch (e, stackTrace) {
-                AppLogger.logger.e("Chyba při načítání realtime logu", e, stackTrace);
+                AppLogger.logger.e("Chyba při načítání realtime last_coffee", e, stackTrace);
               }
               notifyListeners();
             },
           )
-          .subscribe((status, [extra]) {
-            AppLogger.logger.i(
-                "Realtime subscription status: $status, extra: $extra");
-          });
+          .subscribe();
     } catch (e, stackTrace) {
       AppLogger.logger.e("Chyba při nastavování realtime subscription", e, stackTrace);
     }
   }
 
-  /// Reset timer manuálně tím, že vloží nový coffee log do DB.
   Future<void> resetTimer() async {
     final user = Supabase.instance.client.auth.currentUser;
     if (user == null) return;
@@ -130,12 +108,17 @@ class TimerProvider extends ChangeNotifier {
             'created_at': now.toIso8601String(),
           })
           .select();
-      AppLogger.logger.i("Nový coffee log vložen: $now");
-      // Okamžitě lokálně nastavíme _lastLogTime, abychom měli ihned 60 sekund.
+
+      await Supabase.instance.client
+          .from('users_info')
+          .update({'last_coffee': now.toIso8601String()})
+          .eq('user_id', user.id)
+          .select();
+
       _lastLogTime = now;
       notifyListeners();
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Chyba při insertu coffee logu", e, stackTrace);
+      AppLogger.logger.e("Chyba při update users_info nebo insertu do coffee_logs", e, stackTrace);
     }
   }
 

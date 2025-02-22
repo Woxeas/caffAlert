@@ -14,7 +14,7 @@ class TimerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final timerProvider = Provider.of<TimerProvider>(context);
+    final timerProvider = context.watch<TimerProvider>(); // ✅ Automatická reaktivita
 
     return Scaffold(
       backgroundColor: const Color.fromARGB(255, 226, 209, 197),
