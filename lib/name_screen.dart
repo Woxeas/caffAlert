@@ -1,20 +1,20 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'timer_screen.dart'; // Importujte hlavní obrazovku (TimerScreen nebo MainScreen)
+import 'timer_screen.dart';
 
 class NameScreen extends StatefulWidget {
   const NameScreen({super.key});
 
   @override
-  _NameScreenState createState() => _NameScreenState();
+  NameScreenState createState() => NameScreenState();
 }
 
-class _NameScreenState extends State<NameScreen> {
+class NameScreenState extends State<NameScreen> {
   final _nameController = TextEditingController();
   String? _errorMessage;
 
   Future<void> _saveName() async {
-    final name = _nameController.text.trim(); // Trim na odstranění bílých znaků
+    final name = _nameController.text.trim();
     if (name.isEmpty) {
       setState(() {
         _errorMessage = "Please enter your name";
@@ -23,45 +23,61 @@ class _NameScreenState extends State<NameScreen> {
     }
 
     try {
-      // Získání aktuálního uživatele
       final user = Supabase.instance.client.auth.currentUser;
       if (user != null) {
-        // Uložení jména do databáze
         final response = await Supabase.instance.client
             .from('profiles')
             .upsert({
-              'id': user.id, // ID uživatele
-              'name': name,  // Jméno uživatele
+              'id': user.id,
+              'name': name,
             })
             .select();
 
         if (response.isNotEmpty) {
-          // Úspěšné uložení - přesměrování na hlavní obrazovku (TimerScreen)
           if (mounted) {
             Navigator.of(context).pushReplacement(
-              MaterialPageRoute(builder: (_) => TimerScreen()), // Změna na vaši hlavní obrazovku
+              MaterialPageRoute(builder: (_) => TimerScreen()),
             );
           }
         } else {
-          setState(() {
-            _errorMessage = "Failed to save the name. Please try again.";
-          });
+          _showErrorDialog();
         }
       }
     } catch (e) {
-      if (mounted) {
-        setState(() {
-          _errorMessage = "An error occurred. Please try again.";
-        });
-      }
+      _showErrorDialog();
     }
+  }
+
+  void _showErrorDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text("Failed to save the name"),
+        content: const Text("Would you like to try again or continue without a name?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(), // Try Again → Closes dialog
+            child: const Text("Try Again"),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.of(context).pop(); // Close dialog
+              Navigator.of(context).pushReplacement(
+                MaterialPageRoute(builder: (_) => TimerScreen()), // Continue without name
+              );
+            },
+            child: const Text("Skip"),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text("How should we call you?"),
+        title: const Text("How should we call you?"),
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
@@ -70,21 +86,21 @@ class _NameScreenState extends State<NameScreen> {
           children: [
             TextField(
               controller: _nameController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Your Name',
                 border: OutlineInputBorder(),
               ),
             ),
-            SizedBox(height: 10),
+            const SizedBox(height: 10),
             if (_errorMessage != null)
               Text(
                 _errorMessage!,
-                style: TextStyle(color: Colors.red),
+                style: const TextStyle(color: Colors.red),
               ),
-            SizedBox(height: 20),
+            const SizedBox(height: 20),
             ElevatedButton(
               onPressed: _saveName,
-              child: Text("Save"),
+              child: const Text("Save"),
             ),
           ],
         ),

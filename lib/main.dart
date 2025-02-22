@@ -47,7 +47,7 @@ Future<void> main() async {
 }
 
 class CaffAlertApp extends StatefulWidget {
-  const CaffAlertApp({Key? key}) : super(key: key);
+  const CaffAlertApp({super.key});
 
   @override
   State<CaffAlertApp> createState() => _CaffAlertAppState();
@@ -91,7 +91,7 @@ class _CaffAlertAppState extends State<CaffAlertApp> {
 
 /// HomeSelector provádí dotaz na Supabase, aby zjistil, zda má aktuální uživatel nastavené jméno.
 class HomeSelector extends StatelessWidget {
-  const HomeSelector({Key? key}) : super(key: key);
+  const HomeSelector({super.key});
 
   Future<bool> _hasName() async {
     final user = Supabase.instance.client.auth.currentUser;
@@ -105,8 +105,7 @@ class HomeSelector extends StatelessWidget {
 
     if (response == null) return false;
 
-    final profile = response as Map<String, dynamic>;
-    final name = profile['name'];
+    final name = response['name'];
     return name != null && name.toString().trim().isNotEmpty;
   }
   

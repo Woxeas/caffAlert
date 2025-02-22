@@ -6,15 +6,17 @@ class SettingsScreen extends StatelessWidget {
   const SettingsScreen({super.key});
 
   Future<void> _logout(BuildContext context) async {
-    // Supabase odhlášení
-    await Supabase.instance.client.auth.signOut();
-    
-    // Přesměrování na AuthScreen
-    Navigator.of(context).pushAndRemoveUntil(
-      MaterialPageRoute(builder: (_) => AuthScreen()),
-      (route) => false, // Vymaže celou historii navigace
-    );
-  }
+  // Supabase odhlášení
+  await Supabase.instance.client.auth.signOut();
+
+  if (!context.mounted) return;
+
+  // Přesměrování na AuthScreen
+  Navigator.of(context).pushAndRemoveUntil(
+    MaterialPageRoute(builder: (_) => AuthScreen()),
+    (route) => false, // Vymaže celou historii navigace
+  );
+}
 
   @override
   Widget build(BuildContext context) {

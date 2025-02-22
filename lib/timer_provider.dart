@@ -49,7 +49,11 @@ class TimerProvider extends ChangeNotifier {
             const Duration(seconds: durationSeconds));
       }
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Chyba při načítání users_info", e, stackTrace);
+      AppLogger.logger.e(
+        "Chyba při načítání users_info",
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
     notifyListeners();
   }
@@ -84,14 +88,22 @@ class TimerProvider extends ChangeNotifier {
                   _lastLogTime = DateTime.now().toUtc();
                 }
               } catch (e, stackTrace) {
-                AppLogger.logger.e("Chyba při načítání realtime last_coffee", e, stackTrace);
+                AppLogger.logger.e(
+                  "Chyba při načítání realtime last_coffee",
+                  error: e,
+                  stackTrace: stackTrace,
+                );
               }
               notifyListeners();
             },
           )
           .subscribe();
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Chyba při nastavování realtime subscription", e, stackTrace);
+      AppLogger.logger.e(
+        "Chyba při nastavování realtime subscription",
+        error: e,
+        stackTrace: stackTrace,
+      );    
     }
   }
 
@@ -118,7 +130,11 @@ class TimerProvider extends ChangeNotifier {
       _lastLogTime = now;
       notifyListeners();
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Chyba při update users_info nebo insertu do coffee_logs", e, stackTrace);
+      AppLogger.logger.e(
+        "Chyba při update users_info nebo insertu do coffee_logs",
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

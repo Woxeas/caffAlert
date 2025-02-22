@@ -34,7 +34,11 @@ class CoffeeStatsProvider extends ChangeNotifier {
       AppLogger.logger.i("Loaded ${coffeeLog.length} coffee log(s) from Supabase.");
       notifyListeners();
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Error loading coffee_logs", e, stackTrace);
+      AppLogger.logger.e(
+        "Error loading coffee_logs",
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -80,7 +84,11 @@ class CoffeeStatsProvider extends ChangeNotifier {
             AppLogger.logger.i("Realtime subscription status: $status, extra: $extra");
           });
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Error subscribing to realtime coffee_logs", e, stackTrace);
+      AppLogger.logger.e(
+        "Error subscribing to realtime coffee_logs",
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -105,7 +113,11 @@ class CoffeeStatsProvider extends ChangeNotifier {
       coffeeLog.insert(0, now);
       notifyListeners();
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Error inserting coffee_logs", e, stackTrace);
+      AppLogger.logger.e(
+        "Error inserting coffee_logs",
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 
@@ -132,7 +144,7 @@ class CoffeeStatsProvider extends ChangeNotifier {
         return;
       }
 
-      final logId = (response as Map<String, dynamic>)['id'];
+      final logId = response['id'];
       await Supabase.instance.client
           .from('coffee_logs')
           .delete()
@@ -145,7 +157,11 @@ class CoffeeStatsProvider extends ChangeNotifier {
       }
       notifyListeners();
     } catch (e, stackTrace) {
-      AppLogger.logger.e("Error removing last coffee log", e, stackTrace);
+      AppLogger.logger.e(
+        "Error removing last coffee log",
+        error: e,
+        stackTrace: stackTrace,
+      );
     }
   }
 

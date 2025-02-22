@@ -1,15 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'name_screen.dart';
+import 'timer_screen.dart';
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
 
   @override
-  _AuthScreenState createState() => _AuthScreenState();
+  AuthScreenState createState() => AuthScreenState();
 }
 
-class _AuthScreenState extends State<AuthScreen> {
+class AuthScreenState extends State<AuthScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLogin = true;
@@ -24,9 +25,15 @@ class _AuthScreenState extends State<AuthScreen> {
         );
         if (response.session != null) {
           if (!mounted) return;
-          Navigator.of(context).pushReplacement(
-            MaterialPageRoute(builder: (_) => NameScreen()),
-          );
+
+          // Ověření, zda uživatel už má jméno
+          bool hasName = await _hasName(response.session!.user.id);
+          
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              MaterialPageRoute(builder: (_) => hasName ? TimerScreen() : NameScreen()),
+            );
+          }
         } else {
           if (!mounted) return;
           setState(() {
@@ -56,6 +63,19 @@ class _AuthScreenState extends State<AuthScreen> {
         _errorMessage = error.message;
       });
     }
+  }
+
+  /// Funkce na ověření, zda už má uživatel jméno
+  Future<bool> _hasName(String userId) async {
+    final response = await Supabase.instance.client
+        .from('profiles')
+        .select('name')
+        .eq('id', userId)
+        .maybeSingle();
+
+    if (response == null) return false;
+    final name = response['name'];
+    return name != null && name.toString().trim().isNotEmpty;
   }
 
   // Funkce pro vytvoření profilu, pokud neexistuje
