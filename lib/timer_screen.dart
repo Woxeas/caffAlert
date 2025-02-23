@@ -84,6 +84,12 @@ class TimerScreen extends StatelessWidget {
                     ),
                   ),
                 ),
+                ElevatedButton(
+                  onPressed: () {
+                    throw Exception("Testovací chyba z tlačítka");
+                  },
+                  child: Text("Vyvolat testovací chybu"),
+                ),
               ],
             ),
           ),

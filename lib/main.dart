@@ -42,6 +42,9 @@ Future<void> main() async {
           child: const CaffAlertApp(),
         ),
       );
+      Future.delayed(const Duration(seconds: 2), () {
+        throw Exception("Testovací chyba zachycená Sentry");
+      });
     },
   );
 }
