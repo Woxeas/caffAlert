@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:flutter/services.dart';
 import 'name_screen.dart';
 import 'timer_screen.dart';
 
@@ -102,42 +103,50 @@ class AuthScreenState extends State<AuthScreen> {
       ),
       body: Padding(
         padding: const EdgeInsets.all(16.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(labelText: 'Email'),
-            ),
-            const SizedBox(height: 10),
-            TextField(
-              controller: _passwordController,
-              decoration: const InputDecoration(labelText: 'Password'),
-              obscureText: true,
-            ),
-            const SizedBox(height: 20),
-            if (_errorMessage != null)
-              Text(
-                _errorMessage!,
-                style: const TextStyle(color: Colors.red),
+        child: AutofillGroup( // ✨ Přidání AutofillGroup
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(labelText: 'Email'),
+                keyboardType: TextInputType.emailAddress,
+                autofillHints: [AutofillHints.email], 
               ),
-            const SizedBox(height: 20),
-            ElevatedButton(
-              onPressed: _authenticate,
-              child: Text(_isLogin ? 'Login' : 'Sign Up'),
-            ),
-            TextButton(
-              onPressed: () {
-                setState(() {
-                  _isLogin = !_isLogin;
-                  _errorMessage = null;
-                });
-              },
-              child: Text(_isLogin
-                  ? 'Don\'t have an account? Sign Up'
-                  : 'Already have an account? Login'),
-            ),
-          ],
+              const SizedBox(height: 10),
+              TextField(
+                controller: _passwordController,
+                decoration: const InputDecoration(labelText: 'Password'),
+                obscureText: true,
+                autofillHints: [AutofillHints.password],
+              ),
+              const SizedBox(height: 20),
+              if (_errorMessage != null)
+                Text(
+                  _errorMessage!,
+                  style: const TextStyle(color: Colors.red),
+                ),
+              const SizedBox(height: 20),
+              ElevatedButton(
+                onPressed: () {
+                  _authenticate();
+                  TextInput.finishAutofillContext(); // 💡 Ukončí autofill session
+                },
+                child: Text(_isLogin ? 'Login' : 'Sign Up'),
+              ),
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _isLogin = !_isLogin;
+                    _errorMessage = null;
+                  });
+                },
+                child: Text(_isLogin
+                    ? 'Don\'t have an account? Sign Up'
+                    : 'Already have an account? Login'),
+              ),
+            ],
+          ),
         ),
       ),
     );
